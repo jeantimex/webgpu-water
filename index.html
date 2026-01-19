@@ -1,0 +1,63 @@
+<!--
+WebGPU Water
+http://madebyevan.com/webgl-water/
+
+Copyright 2011 Evan Wallace
+Released under the MIT license
+-->
+
+<!DOCTYPE html>
+<html><head>
+  <title>WebGPU Water</title>
+  <meta name="viewport" content="initial-scale=1.0, user-scalable=no">
+  <style type="text/css">
+    body { font: 13px/140% Arial, sans-serif; background: black; color: white; overflow: hidden; }
+    a { color: inherit; cursor: pointer; }
+    img { display: none; }
+    ul { padding: 0 0 0 20px; }
+    h1 { font: bold italic 30px/30px Georgia; text-align: center; }
+    h2 { font: bold italic 17px/17px Georgia; padding-top: 10px; }
+    small { display: block; font-size: 11px; line-height: 15px; }
+    canvas { position: absolute; top: 0; left: 0; }
+    #help { position: absolute; top: 0; right: 0; bottom: 0; width: 280px; padding-right: 20px; overflow: auto; }
+    #loading { position: absolute; left: 0; top: 50%; right: 300px; text-align: center; margin-top: -8px; }
+    @media (max-width: 600px) {
+      small { font-size: 8px; line-height: 10px; }
+      #help { width: 100px; font-size: 10px; line-height: 12px; }
+    }
+  </style>
+  <script type="module" crossorigin src="/webgpu-water/assets/index-BLLF3BIu.js"></script>
+</head><body>
+  <div id="loading">Loading...</div>
+  <div id="help">
+    <h1>WebGPU Water</h1>
+    <p>Made by <a href="http://madebyevan.com/">Evan Wallace</a></p>
+    <p>Ported to WebGPU by <a href="https://github.com/jeantimex">jeantimex</a></p>
+    <p>This demo requires a browser that supports WebGPU. If you can't run the demo, you can still see the original WebGL implementation at <a href="https://madebyevan.com/webgl-water/">madebyevan.com/webgl-water/</a>.</p>
+    <h2>Interactions:</h2>
+    <ul>
+      <li>Draw on the water to make ripples</li>
+      <li>Drag the background to rotate the camera</li>
+      <li>Press SPACEBAR to pause and unpause</li>
+      <li>Drag the sphere to move it around</li>
+      <li>Press the L key to set the light direction</li>
+      <li>Press the G key to toggle gravity</li>
+    </ul>
+    <h2>Features:</h2>
+    <ul>
+      <li>Raytraced reflections and refractions</li>
+      <li>Analytic ambient occlusion</li>
+      <li>Heightfield water simulation</li>
+      <li>Soft shadows</li>
+      <li>Real-time Caustics</li>
+    </ul>
+    <p><small>Tile texture from <a href="http://www.flickr.com/photos/zooboing/3682834083/">zooboing</a> on Flickr</small></p>
+  </div>
+  <img id="tiles" src="tiles.jpg">
+  <img id="xneg" src="xneg.jpg">
+  <img id="xpos" src="xpos.jpg">
+  <img id="ypos" src="ypos.jpg">
+  <img id="zneg" src="zneg.jpg">
+  <img id="zpos" src="zpos.jpg">
+  <canvas></canvas>
+</body></html>
