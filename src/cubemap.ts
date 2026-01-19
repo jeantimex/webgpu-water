@@ -1,14 +1,19 @@
+import type { CubemapURLs } from './types';
+
 export class Cubemap {
-  constructor(device) {
+  private device: GPUDevice;
+  private texture: GPUTexture | null;
+
+  constructor(device: GPUDevice) {
     this.device = device;
     this.texture = null;
   }
 
-  async load(urls) {
-    const order = ['xpos', 'xneg', 'ypos', 'yneg', 'zpos', 'zneg'];
-    
+  async load(urls: CubemapURLs): Promise<GPUTexture> {
+    const order: (keyof CubemapURLs)[] = ['xpos', 'xneg', 'ypos', 'yneg', 'zpos', 'zneg'];
+
     // Load all images first to get dimensions
-    const images = await Promise.all(order.map(name => 
+    const images = await Promise.all(order.map(name =>
       fetch(urls[name]).then(res => res.blob()).then(blob => createImageBitmap(blob))
     ));
 

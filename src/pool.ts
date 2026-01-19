@@ -1,8 +1,30 @@
 export class Pool {
-  constructor(device, format, uniformBuffer, tileTexture, tileSampler, lightUniformBuffer, sphereUniformBuffer, shadowUniformBuffer) {
+  private device: GPUDevice;
+  private format: GPUTextureFormat;
+  private uniformBuffer: GPUBuffer;
+  private tileTexture: GPUTexture;
+  private tileSampler: GPUSampler;
+  private lightUniformBuffer: GPUBuffer;
+  private sphereUniformBuffer: GPUBuffer;
+  private shadowUniformBuffer: GPUBuffer;
+  private positionBuffer!: GPUBuffer;
+  private indexBuffer!: GPUBuffer;
+  private vertexCount!: number;
+  private pipeline!: GPURenderPipeline;
+
+  constructor(
+    device: GPUDevice,
+    format: GPUTextureFormat,
+    uniformBuffer: GPUBuffer,
+    tileTexture: GPUTexture,
+    tileSampler: GPUSampler,
+    lightUniformBuffer: GPUBuffer,
+    sphereUniformBuffer: GPUBuffer,
+    shadowUniformBuffer: GPUBuffer
+  ) {
     this.device = device;
     this.format = format;
-    
+
     // Store resources for per-frame bind group creation
     this.uniformBuffer = uniformBuffer;
     this.tileTexture = tileTexture;
@@ -15,8 +37,8 @@ export class Pool {
     this.createPipeline();
   }
 
-  createGeometry() {
-    function pickOctant(i) {
+  private createGeometry(): void {
+    function pickOctant(i: number): [number, number, number] {
       return [
         (i & 1) * 2 - 1,
         (i & 2) - 1,
@@ -33,8 +55,8 @@ export class Pool {
       [4, 5, 6, 7, 0, 0, +1]  // +z
     ];
 
-    const positions = [];
-    const indices = [];
+    const positions: number[] = [];
+    const indices: number[] = [];
     let vertexCount = 0;
 
     for (const data of cubeData) {
@@ -70,7 +92,7 @@ export class Pool {
     this.indexBuffer.unmap();
   }
 
-  createPipeline() {
+  private createPipeline(): void {
     const shaderModule = this.device.createShaderModule({
       label: 'Pool Shader',
       code: `
@@ -81,7 +103,7 @@ export class Pool {
         @binding(0) @group(0) var<uniform> uniforms : Uniforms;
         @binding(1) @group(0) var tileSampler : sampler;
         @binding(2) @group(0) var tileTexture : texture_2d<f32>;
-        
+
         struct LightUniforms {
            direction : vec3f,
         }
@@ -92,14 +114,14 @@ export class Pool {
           radius : f32,
         }
         @binding(4) @group(0) var<uniform> sphere : SphereUniforms;
-        
+
         struct ShadowUniforms {
             rim : f32,
             sphere : f32,
             ao : f32,
         }
         @binding(8) @group(0) var<uniform> shadows : ShadowUniforms;
-        
+
         @binding(5) @group(0) var waterSampler : sampler;
         @binding(6) @group(0) var waterTexture : texture_2d<f32>;
         @binding(7) @group(0) var causticTexture : texture_2d<f32>;
@@ -108,7 +130,7 @@ export class Pool {
           @builtin(position) position : vec4f,
           @location(0) localPos : vec3f,
         }
-        
+
         // Helper functions
         fn intersectCube(origin: vec3f, ray: vec3f, cubeMin: vec3f, cubeMax: vec3f) -> vec2f {
           let tMin = (cubeMin - origin) / ray;
@@ -123,7 +145,7 @@ export class Pool {
         @vertex
         fn vs_main(@location(0) position : vec3f) -> VertexOutput {
           var output : VertexOutput;
-          
+
           var transformedPos = position;
           transformedPos.y = ((1.0 - position.y) * (7.0 / 12.0) - 1.0);
 
@@ -136,7 +158,7 @@ export class Pool {
         fn fs_main(@location(0) localPos : vec3f) -> @location(0) vec4f {
           var wallColor : vec3f;
           let point = localPos;
-          
+
           if (abs(point.x) > 0.999) {
             wallColor = textureSampleLevel(tileTexture, tileSampler, point.yz * 0.5 + vec2f(1.0, 0.5), 0.0).rgb;
           } else if (abs(point.z) > 0.999) {
@@ -144,37 +166,37 @@ export class Pool {
           } else {
             wallColor = textureSampleLevel(tileTexture, tileSampler, point.xz * 0.5 + 0.5, 0.0).rgb;
           }
-          
+
           let IOR_AIR = 1.0;
           let IOR_WATER = 1.333;
           let poolHeight = 1.0;
-          
+
           var normal = vec3f(0.0, 1.0, 0.0);
           if (abs(point.x) > 0.999) { normal = vec3f(-point.x, 0.0, 0.0); }
           else if (abs(point.z) > 0.999) { normal = vec3f(0.0, 0.0, -point.z); }
-          
+
           var scale = 0.5;
-          
+
           // Pool ambient occlusion
           let poolAO = 1.0 / length(point);
           scale *= mix(1.0, poolAO, shadows.ao);
-          
+
           // Sphere ambient occlusion (Replaces analytic shadow, keeps sphere uniform used)
           let dist = length(point - sphere.center) / sphere.radius;
           let sphereAO = 1.0 - 0.9 / pow(max(0.0, dist), 4.0);
           scale *= mix(1.0, sphereAO, shadows.sphere);
 
           let refractedLight = -refract(-light.direction, vec3f(0.0, 1.0, 0.0), IOR_AIR / IOR_WATER);
-          
+
           let diffuse = max(0.0, dot(refractedLight, normal));
-          
+
           let waterInfo = textureSampleLevel(waterTexture, waterSampler, point.xz * 0.5 + 0.5, 0.0);
-          
+
           if (point.y < waterInfo.r) {
              // Underwater: Use caustics
              let causticUV = 0.75 * (point.xz - point.y * refractedLight.xz / refractedLight.y) * 0.5 + 0.5;
-             let caustic = textureSampleLevel(causticTexture, tileSampler, causticUV, 0.0); 
-             
+             let caustic = textureSampleLevel(causticTexture, tileSampler, causticUV, 0.0);
+
              var intensity = caustic.r;
              var sphereShadow = caustic.g;
 
@@ -183,7 +205,7 @@ export class Pool {
                  intensity = 0.2;
                  sphereShadow = 1.0;
              }
-             
+
              scale += diffuse * intensity * 2.0 * sphereShadow;
           } else {
              // Above water: Rim shadow
@@ -193,7 +215,7 @@ export class Pool {
           }
 
           var finalColor = wallColor * scale;
-          
+
           if (point.y < waterInfo.r) {
              let underwaterColor = vec3f(0.4, 0.9, 1.0);
              finalColor *= underwaterColor * 1.2;
@@ -236,7 +258,7 @@ export class Pool {
     });
   }
 
-  render(passEncoder, waterTexture, waterSampler, causticsTexture) {
+  render(passEncoder: GPURenderPassEncoder, waterTexture: GPUTexture, waterSampler: GPUSampler, causticsTexture: GPUTexture): void {
     const bindGroup = this.device.createBindGroup({
       layout: this.pipeline.getBindGroupLayout(0),
       entries: [

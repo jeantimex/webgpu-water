@@ -2,6 +2,8 @@
 
 A real-time water simulation using WebGPU, ported from [Evan Wallace's WebGL Water](https://madebyevan.com/webgl-water/).
 
+https://github.com/user-attachments/assets/10f27799-944a-47e1-81dd-cb84540dd842
+
 ## Overview
 
 This project is a WebGPU port of the classic WebGL water demonstration originally created by Evan Wallace. It showcases advanced real-time graphics techniques including raytraced reflections, refractions, caustics, and physically-based water simulation, all running in the browser using the modern WebGPU API.
