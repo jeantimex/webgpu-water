@@ -219,11 +219,15 @@ async function init(): Promise<void> {
   gui.close(); // Collapse by default
   
   const settings = {
-    gravity: useSpherePhysics
+    gravity: useSpherePhysics,
+    followCamera: false
   };
 
-  const gravityController = gui.add(settings, 'gravity').name('Gravity').onChange((v: boolean) => {
+  const gravityController = gui.add(settings, 'gravity').name('Toggle Gravity').onChange((v: boolean) => {
     useSpherePhysics = v;
+  });
+  gui.add(settings, 'followCamera').name('Light From Camera').onChange(() => {
+    (document.activeElement as HTMLElement)?.blur();
   });
 
   // Initialize sphere position
@@ -454,8 +458,8 @@ async function init(): Promise<void> {
     prevTime = time;
     if (seconds > 1) seconds = 1; // Cap delta time to prevent physics explosion
 
-    // Update light direction if L key is held
-    if (keys['L']) {
+    // Update light direction if L key is held or Follow Camera is enabled
+    if (keys['L'] || settings.followCamera) {
       lightDir = Vector.fromAngles((90 - angleY) * Math.PI / 180, -angleX * Math.PI / 180);
       updateLight();
     }
