@@ -9,6 +9,7 @@ Released under the MIT license
 <!DOCTYPE html>
 <html><head>
   <title>WebGPU Water</title>
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
   <meta name="viewport" content="initial-scale=1.0, user-scalable=no">
   <style type="text/css">
     body { font: 13px/140% Arial, sans-serif; background: black; color: white; overflow: hidden; }
@@ -18,18 +19,39 @@ Released under the MIT license
     h1 { font: bold italic 30px/30px Georgia; text-align: center; }
     h2 { font: bold italic 17px/17px Georgia; padding-top: 10px; }
     small { display: block; font-size: 11px; line-height: 15px; }
-    canvas { position: absolute; top: 0; left: 0; }
+    canvas { position: absolute; top: 0; left: 0; touch-action: none; }
     #help { position: absolute; top: 0; right: 0; bottom: 0; width: 280px; padding-right: 20px; overflow: auto; }
     #loading { position: absolute; left: 0; top: 50%; right: 300px; text-align: center; margin-top: -8px; }
+    #help-toggle { display: none; position: absolute; top: 10px; right: 10px; z-index: 10; cursor: pointer; user-select: none; color: white; background: #222; padding: 5px; border-radius: 4px; transition: right 0.3s ease-in-out; width: 24px; height: 24px; line-height: 24px; text-align: center; }
     @media (max-width: 600px) {
       small { font-size: 8px; line-height: 10px; }
-      #help { width: 100px; font-size: 10px; line-height: 12px; }
+      #help {
+        width: 200px;
+        font-size: 10px;
+        line-height: 12px;
+        background: #222;
+        padding-left: 10px;
+        padding-top: 40px;
+        z-index: 5;
+        transition: transform 0.3s ease-in-out;
+        transform: translateX(0);
+      }
+      #help.collapsed {
+        transform: translateX(100%);
+        display: block;
+      }
+      #help.collapsed + #help-toggle {
+        right: 10px;
+      }
+      #help:not(.collapsed) + #help-toggle {
+        right: 196px;
+      }
+      #help-toggle { display: block; }
     }
   </style>
-  <script type="module" crossorigin src="/webgpu-water/assets/index-CHx2gpvf.js"></script>
+  <script type="module" crossorigin src="/webgpu-water/assets/index-B7xHg2pV.js"></script>
 </head><body>
-  <div id="loading">Loading...</div>
-  <div id="help">
+  <div id="help" class="collapsed">
     <h1>WebGPU Water</h1>
     <p>Made by <a href="http://madebyevan.com/">Evan Wallace</a></p>
     <p>Ported to WebGPU by <a href="https://github.com/jeantimex">jeantimex</a></p>
@@ -53,6 +75,8 @@ Released under the MIT license
     </ul>
     <p><small>Tile texture from <a href="http://www.flickr.com/photos/zooboing/3682834083/">zooboing</a> on Flickr</small></p>
   </div>
+  <div id="help-toggle" class="material-icons">menu</div>
+  <div id="loading">Loading...</div>
   <img id="tiles" src="tiles.jpg">
   <img id="xneg" src="xneg.jpg">
   <img id="xpos" src="xpos.jpg">
