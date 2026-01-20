@@ -27,18 +27,21 @@ Released under the MIT license
       right: auto !important;
       left: 10px !important;
       top: 10px !important;
-      --width: 180px;
+      --width: 170px;
     }
     .lil-gui .lil-controller {
       display: flex !important;
+      width: 100% !important;
       justify-content: space-between !important;
       align-items: center !important;
       padding-left: 4px !important;
       padding-right: 4px !important;
+      box-sizing: border-box !important;
     }
     .lil-gui .lil-controller .lil-name {
       width: auto !important;
       min-width: 0 !important;
+      flex-grow: 1 !important;
     }
     .lil-gui .lil-controller .lil-widget {
       width: auto !important;
