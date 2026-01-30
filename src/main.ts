@@ -404,9 +404,7 @@ async function init(): Promise<void> {
     const ray = tracer.getRayForPixel(x * ratio, y * ratio);
 
     // Check if clicking on sphere (only if visible)
-    const sphereHit = settings.showSphere
-      ? Raytracer.hitTestSphere(tracer.eye, ray, center, radius)
-      : null;
+    const sphereHit = Raytracer.hitTestSphere(tracer.eye, ray, center, radius);
     if (sphereHit) {
       mode = InteractionMode.MoveSphere;
       prevHit = sphereHit.hit;
