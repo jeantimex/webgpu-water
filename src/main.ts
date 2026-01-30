@@ -27,6 +27,7 @@ import GUI from 'lil-gui';
 import { Pool } from './pool';
 import { Sphere } from './sphere';
 import { Water } from './water';
+import { Model } from './model';
 import { Vector, Raytracer } from './lightgl';
 import { Cubemap } from './cubemap';
 import { InteractionMode } from './types';
@@ -189,8 +190,13 @@ async function init(): Promise<void> {
   }
   updateLight();
 
-  // Initialize shadow flags (all enabled: rim=1, sphere=1, ao=1)
-  device.queue.writeBuffer(shadowUniformBuffer, 0, new Float32Array([1.0, 1.0, 1.0, 0.0]));
+  const updateShadowFlags = (showSphere: boolean): void => {
+    device.queue.writeBuffer(
+      shadowUniformBuffer,
+      0,
+      new Float32Array([1.0, showSphere ? 1.0 : 0.0, 1.0, 0.0])
+    );
+  };
 
   // --- Scene Objects ---
 
@@ -224,6 +230,10 @@ async function init(): Promise<void> {
     skySampler
   );
 
+  // Load duck model (textured) and reuse sphere uniforms for placement
+  const model = new Model(device, format, uniformBuffer, lightUniformBuffer, sphereUniformBuffer);
+  await model.load(`${base}models/duck/Duck.gltf`);
+
   // --- Sphere Physics State ---
 
   /** Current sphere center position */
@@ -248,19 +258,14 @@ async function init(): Promise<void> {
   const settings = {
     gravity: useSpherePhysics,
     followCamera: false,
-    showSphere: true,
+    showSphere: false,
   };
 
   gui
     .add(settings, 'showSphere')
     .name('Render Sphere')
     .onChange((v: boolean) => {
-      // Update shadow flags when sphere visibility changes: rim=1, sphere=v, ao=1
-      device.queue.writeBuffer(
-        shadowUniformBuffer,
-        0,
-        new Float32Array([1.0, v ? 1.0 : 0.0, 1.0, 0.0])
-      );
+      updateShadowFlags(v);
       (document.activeElement as HTMLElement)?.blur();
     });
   const gravityController = gui
@@ -276,6 +281,8 @@ async function init(): Promise<void> {
     .onChange(() => {
       (document.activeElement as HTMLElement)?.blur();
     });
+
+  updateShadowFlags(settings.showSphere);
 
   // Initialize sphere position
   sphere.update(center.toArray(), radius);
@@ -593,6 +600,7 @@ async function init(): Promise<void> {
     if (settings.showSphere) {
       sphere.render(passEncoder, water.textureA, water.sampler, water.causticsTexture);
     }
+    model.render(passEncoder, water.textureA, water.sampler, water.causticsTexture);
     water.renderSurface(passEncoder);
 
     passEncoder.end();
