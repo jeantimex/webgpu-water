@@ -35,10 +35,21 @@ fn fs_main(@location(0) oldPos : vec3f, @location(1) newPos : vec3f, @location(2
     shadow = mix(1.0, shadow, clamp(dist * 2.0, 0.0, 1.0));
     shadow = mix(1.0, shadow, shadows.sphere);
 
-    // Model shadow from projected silhouette texture
+    // Model shadow from projected silhouette texture (9-tap soft shadow)
     let causticUV = 0.75 * (newPos.xz - newPos.y * refractedLight.xz / refractedLight.y) * 0.5 + 0.5;
-    let modelShadow = textureSampleLevel(modelShadowTexture, waterSampler, causticUV, 0.0).r;
-    shadow *= 1.0 - modelShadow;
+    let d = 4.0 / 1024.0;
+    var modelShadow = textureSampleLevel(modelShadowTexture, waterSampler, causticUV, 0.0).r;
+    modelShadow += textureSampleLevel(modelShadowTexture, waterSampler, causticUV + vec2f(d, 0.0), 0.0).r;
+    modelShadow += textureSampleLevel(modelShadowTexture, waterSampler, causticUV + vec2f(-d, 0.0), 0.0).r;
+    modelShadow += textureSampleLevel(modelShadowTexture, waterSampler, causticUV + vec2f(0.0, d), 0.0).r;
+    modelShadow += textureSampleLevel(modelShadowTexture, waterSampler, causticUV + vec2f(0.0, -d), 0.0).r;
+    modelShadow += textureSampleLevel(modelShadowTexture, waterSampler, causticUV + vec2f(d, d), 0.0).r;
+    modelShadow += textureSampleLevel(modelShadowTexture, waterSampler, causticUV + vec2f(-d, d), 0.0).r;
+    modelShadow += textureSampleLevel(modelShadowTexture, waterSampler, causticUV + vec2f(d, -d), 0.0).r;
+    modelShadow += textureSampleLevel(modelShadowTexture, waterSampler, causticUV + vec2f(-d, -d), 0.0).r;
+    modelShadow /= 9.0;
+
+    shadow *= 1.0 - modelShadow * 0.3;
 
     // Rim shadow at pool edges
     let poolHeight = 1.0;

@@ -53,10 +53,20 @@ fn fs_main(@location(0) localPos : vec3f) -> @location(0) vec4f {
   // Calculate refracted light direction (Snell's law)
   let refractedLight = -refract(-light.direction, vec3f(0.0, 1.0, 0.0), IOR_AIR / IOR_WATER);
 
-  // Model ambient occlusion from projected shadow
+  // Model ambient occlusion from projected shadow (9-tap soft shadow)
   let modelShadowUV = 0.75 * (point.xz - point.y * refractedLight.xz / refractedLight.y) * 0.5 + 0.5;
-  let modelShadow = textureSampleLevel(modelShadowTexture, tileSampler, modelShadowUV, 0.0).r;
-  scale *= 1.0 - modelShadow * 0.5;
+  let d = 4.0 / 1024.0;
+  var modelShadow = textureSampleLevel(modelShadowTexture, tileSampler, modelShadowUV, 0.0).r;
+  modelShadow += textureSampleLevel(modelShadowTexture, tileSampler, modelShadowUV + vec2f(d, 0.0), 0.0).r;
+  modelShadow += textureSampleLevel(modelShadowTexture, tileSampler, modelShadowUV + vec2f(-d, 0.0), 0.0).r;
+  modelShadow += textureSampleLevel(modelShadowTexture, tileSampler, modelShadowUV + vec2f(0.0, d), 0.0).r;
+  modelShadow += textureSampleLevel(modelShadowTexture, tileSampler, modelShadowUV + vec2f(0.0, -d), 0.0).r;
+  modelShadow += textureSampleLevel(modelShadowTexture, tileSampler, modelShadowUV + vec2f(d, d), 0.0).r;
+  modelShadow += textureSampleLevel(modelShadowTexture, tileSampler, modelShadowUV + vec2f(-d, d), 0.0).r;
+  modelShadow += textureSampleLevel(modelShadowTexture, tileSampler, modelShadowUV + vec2f(d, -d), 0.0).r;
+  modelShadow += textureSampleLevel(modelShadowTexture, tileSampler, modelShadowUV + vec2f(-d, -d), 0.0).r;
+  modelShadow /= 9.0;
+  scale *= 1.0 - modelShadow * 0.3;
 
   // Basic diffuse lighting
   let diffuse = max(0.0, dot(refractedLight, normal));
