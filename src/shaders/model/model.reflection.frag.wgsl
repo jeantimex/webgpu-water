@@ -15,16 +15,6 @@ fn fs_main(
   @location(1) normal : vec3f,
   @location(2) uv : vec2f
 ) -> @location(0) vec4f {
-  let waterInfo = textureSampleLevel(waterTexture, waterSampler, worldPos.xz * 0.5 + 0.5, 0.0);
-  
-  // CLIP UNDERWATER PIXELS
-  // In the reflection pass, we only want to see the part of the object
-  // that is strictly ABOVE the water surface.
-  // We use a small epsilon (0.01) to avoid z-fighting at the waterline.
-  if (worldPos.y < waterInfo.r - 0.01) {
-    discard;
-  }
-
   let IOR_AIR = 1.0;
   let IOR_WATER = 1.333;
 
@@ -35,9 +25,10 @@ fn fs_main(
   let diffuse = max(0.0, dot(-light.direction, n)) * 0.6;
   
   // No caustics or underwater tint needed for reflection
-  // Dummy usage of causticTexture to keep bind group layout compatible
-  let unused = textureSampleLevel(causticTexture, waterSampler, vec2f(0.0), 0.0).r;
-  let color = baseColor * (0.4 + diffuse) + unused * 0.00001;
+  // Dummy usage of waterTexture and causticTexture to keep bind group layout compatible
+  let unusedW = textureSampleLevel(waterTexture, waterSampler, vec2f(0.0), 0.0).r;
+  let unusedC = textureSampleLevel(causticTexture, waterSampler, vec2f(0.0), 0.0).r;
+  let color = baseColor * (0.4 + diffuse) + (unusedW + unusedC) * 0.00001;
 
   return vec4f(color, 1.0);
 }

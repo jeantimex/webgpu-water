@@ -143,6 +143,23 @@ fn getSurfaceRayColor(origin: vec3f, ray: vec3f, waterColor: vec3f) -> vec3f {
     return color;
 }
 
+// Samples the reflection texture for the duck's underwater reflection.
+// Uses the same planar projection as the above-water sampleReflection:
+// project through the mirrored VP and sample the reflectionTexture.
+fn sampleUnderwaterReflection(worldPos: vec3f) -> vec4f {
+    let clip = reflection.viewProjectionMatrix * vec4f(worldPos, 1.0);
+    let ndc = clip.xyz / max(clip.w, 1.0e-6);
+    let uv = vec2f(ndc.x * 0.5 + 0.5, 0.5 - ndc.y * 0.5);
+
+    let uvClamped = clamp(uv, vec2f(0.0), vec2f(1.0));
+    let inMin = step(vec2f(0.0), uv);
+    let inMax = step(uv, vec2f(1.0));
+    let inBounds = inMin.x * inMin.y * inMax.x * inMax.y;
+    let validW = step(0.0, clip.w);
+    let mask = inBounds * validW;
+    return textureSampleLevel(reflectionTexture, reflectionSampler, uvClamped, 0.0) * mask;
+}
+
 @fragment
 fn fs_main(@location(0) worldPos : vec3f) -> @location(0) vec4f {
     // Sample normal with UV refinement for smooth appearance
@@ -168,7 +185,10 @@ fn fs_main(@location(0) worldPos : vec3f) -> @location(0) vec4f {
     let refractedRay = refract(incomingRay, normal, IOR_WATER / IOR_AIR);
     let fresnel = mix(0.5, 1.0, pow(1.0 - dot(normal, -incomingRay), 3.0));
 
-    let reflectedColor = getSurfaceRayColor(worldPos, reflectedRay, UNDERwaterColor);
+    var reflectedColor = getSurfaceRayColor(worldPos, reflectedRay, UNDERwaterColor);
+    let underwaterReflection = sampleUnderwaterReflection(worldPos);
+    reflectedColor = mix(reflectedColor, underwaterReflection.rgb, underwaterReflection.a);
+
     let refractedColor = getSurfaceRayColor(worldPos, refractedRay, vec3f(1.0)) * vec3f(0.8, 1.0, 1.1);
 
     let finalColor = mix(reflectedColor, refractedColor, (1.0 - fresnel) * length(refractedRay));
