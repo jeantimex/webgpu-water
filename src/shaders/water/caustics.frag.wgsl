@@ -7,6 +7,7 @@
 @binding(4) @group(0) var<uniform> shadows : ShadowUniforms;
 @binding(2) @group(0) var waterSampler : sampler;
 @binding(3) @group(0) var waterTexture : texture_2d<f32>;
+@binding(5) @group(0) var modelShadowTexture : texture_2d<f32>;
 
 @fragment
 fn fs_main(@location(0) oldPos : vec3f, @location(1) newPos : vec3f, @location(2) ray : vec3f) -> @location(0) vec4f {
@@ -33,6 +34,11 @@ fn fs_main(@location(0) oldPos : vec3f, @location(1) newPos : vec3f, @location(2
     shadow = clamp(1.0 / (1.0 + exp(-shadow)), 0.0, 1.0);
     shadow = mix(1.0, shadow, clamp(dist * 2.0, 0.0, 1.0));
     shadow = mix(1.0, shadow, shadows.sphere);
+
+    // Model shadow from projected silhouette texture
+    let causticUV = 0.75 * (newPos.xz - newPos.y * refractedLight.xz / refractedLight.y) * 0.5 + 0.5;
+    let modelShadow = textureSampleLevel(modelShadowTexture, waterSampler, causticUV, 0.0).r;
+    shadow *= 1.0 - modelShadow;
 
     // Rim shadow at pool edges
     let poolHeight = 1.0;

@@ -51,6 +51,9 @@ export class Pool {
   /** Uniform buffer containing shadow toggle flags */
   private shadowUniformBuffer: GPUBuffer;
 
+  /** Model shadow texture for projected silhouette */
+  private modelShadowTexture: GPUTexture;
+
   /** Vertex buffer containing pool wall positions */
   private positionBuffer!: GPUBuffer;
 
@@ -83,7 +86,8 @@ export class Pool {
     tileSampler: GPUSampler,
     lightUniformBuffer: GPUBuffer,
     sphereUniformBuffer: GPUBuffer,
-    shadowUniformBuffer: GPUBuffer
+    shadowUniformBuffer: GPUBuffer,
+    modelShadowTexture: GPUTexture
   ) {
     this.device = device;
     this.format = format;
@@ -95,6 +99,7 @@ export class Pool {
     this.lightUniformBuffer = lightUniformBuffer;
     this.sphereUniformBuffer = sphereUniformBuffer;
     this.shadowUniformBuffer = shadowUniformBuffer;
+    this.modelShadowTexture = modelShadowTexture;
 
     this.createGeometry();
     this.createPipeline();
@@ -273,6 +278,7 @@ export class Pool {
         { binding: 6, resource: waterTexture.createView() },
         { binding: 7, resource: causticsTexture.createView() },
         { binding: 8, resource: { buffer: this.shadowUniformBuffer } },
+        { binding: 9, resource: this.modelShadowTexture.createView() },
       ],
     });
 

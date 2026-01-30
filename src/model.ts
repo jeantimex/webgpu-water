@@ -4,6 +4,8 @@ import { mat4, vec3 } from 'wgpu-matrix';
 import modelVertShader from './shaders/model/model.vert.wgsl';
 import modelFragShader from './shaders/model/model.frag.wgsl';
 import modelReflectionFragShader from './shaders/model/model.reflection.frag.wgsl';
+import modelShadowVertShader from './shaders/model/model.shadow.vert.wgsl';
+import modelShadowFragShader from './shaders/model/model.shadow.frag.wgsl';
 
 type Gltf = {
   scenes?: { nodes?: number[] }[];
@@ -48,11 +50,15 @@ export class Model {
   private indexCount = 0;
 
   private pipeline!: GPURenderPipeline;
+  private shadowPipeline!: GPURenderPipeline;
   private reflectionPipeline!: GPURenderPipeline;
   private modelSampler!: GPUSampler;
   private modelTexture!: GPUTexture;
 
   private loaded = false;
+
+  /** Shadow texture: model silhouette projected along refracted light */
+  shadowTexture: GPUTexture;
 
   constructor(
     device: GPUDevice,
@@ -66,6 +72,13 @@ export class Model {
     this.commonUniforms = uniformBuffer;
     this.lightUniforms = lightUniformBuffer;
     this.modelUniforms = modelUniformBuffer;
+
+    this.shadowTexture = device.createTexture({
+      label: 'Model Shadow Texture',
+      size: [1024, 1024],
+      format: 'rgba8unorm',
+      usage: GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.RENDER_ATTACHMENT,
+    });
 
     this.createPipeline();
   }
@@ -160,6 +173,47 @@ export class Model {
     passEncoder.drawIndexed(this.indexCount);
   }
 
+  /**
+   * Renders the model's shadow silhouette projected along the refracted light
+   * direction into the shadow texture (same UV space as caustics).
+   */
+  /**
+   * Renders the model's shadow silhouette projected along the refracted light
+   * direction into the shadow texture (same UV space as caustics).
+   */
+  renderShadow(): void {
+    if (!this.loaded) return;
+
+    const bindGroup = this.device.createBindGroup({
+      layout: this.shadowPipeline.getBindGroupLayout(0),
+      entries: [
+        { binding: 0, resource: { buffer: this.lightUniforms } },
+        { binding: 1, resource: { buffer: this.modelUniforms } },
+      ],
+    });
+
+    const encoder = this.device.createCommandEncoder();
+    const pass = encoder.beginRenderPass({
+      colorAttachments: [
+        {
+          view: this.shadowTexture.createView(),
+          clearValue: { r: 0, g: 0, b: 0, a: 0 },
+          loadOp: 'clear',
+          storeOp: 'store',
+        },
+      ],
+    });
+
+    pass.setPipeline(this.shadowPipeline);
+    pass.setBindGroup(0, bindGroup);
+    pass.setVertexBuffer(0, this.positionBuffer);
+    pass.setIndexBuffer(this.indexBuffer, this.indexFormat);
+    pass.drawIndexed(this.indexCount);
+    pass.end();
+
+    this.device.queue.submit([encoder.finish()]);
+  }
+
   private createPipeline(): void {
     const vertexShaderModule = this.device.createShaderModule({
       label: 'Model Vertex Shader',
@@ -217,6 +271,39 @@ export class Model {
 
     this.pipeline = createPipeline('Model Pipeline', 'back', fragmentShaderModule);
     this.reflectionPipeline = createPipeline('Model Reflection Pipeline', 'front', reflectionFragmentShaderModule);
+
+    // Shadow pipeline: projects model silhouette along refracted light
+    const shadowVertModule = this.device.createShaderModule({
+      label: 'Model Shadow Vertex Shader',
+      code: modelShadowVertShader,
+    });
+    const shadowFragModule = this.device.createShaderModule({
+      label: 'Model Shadow Fragment Shader',
+      code: modelShadowFragShader,
+    });
+    this.shadowPipeline = this.device.createRenderPipeline({
+      label: 'Model Shadow Pipeline',
+      layout: 'auto',
+      vertex: {
+        module: shadowVertModule,
+        entryPoint: 'vs_main',
+        buffers: [
+          {
+            arrayStride: 3 * 4,
+            attributes: [{ shaderLocation: 0, offset: 0, format: 'float32x3' as GPUVertexFormat }],
+          },
+        ],
+      },
+      fragment: {
+        module: shadowFragModule,
+        entryPoint: 'fs_main',
+        targets: [{ format: 'rgba8unorm' }],
+      },
+      primitive: {
+        topology: 'triangle-list',
+        cullMode: 'back',
+      },
+    });
   }
 
   private async loadTexture(gltf: Gltf, baseUrl: string): Promise<void> {

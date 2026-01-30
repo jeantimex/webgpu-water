@@ -61,6 +61,9 @@ export class Water {
   /** Sphere position and radius uniform buffer */
   private sphereUniformBuffer: GPUBuffer;
 
+  /** Model shadow texture for projected silhouette */
+  private modelShadowTexture: GPUTexture;
+
   /** Shadow toggle flags uniform buffer */
   private shadowUniformBuffer: GPUBuffer;
 
@@ -188,6 +191,7 @@ export class Water {
     uniformBuffer: GPUBuffer,
     lightUniformBuffer: GPUBuffer,
     sphereUniformBuffer: GPUBuffer,
+    modelShadowTexture: GPUTexture,
     shadowUniformBuffer: GPUBuffer,
     tileTexture: GPUTexture,
     tileSampler: GPUSampler,
@@ -207,6 +211,7 @@ export class Water {
     this.commonUniformBuffer = uniformBuffer;
     this.lightUniformBuffer = lightUniformBuffer;
     this.sphereUniformBuffer = sphereUniformBuffer;
+    this.modelShadowTexture = modelShadowTexture;
     this.shadowUniformBuffer = shadowUniformBuffer;
     this.tileTexture = tileTexture;
     this.tileSampler = tileSampler;
@@ -807,6 +812,7 @@ export class Water {
         { binding: 2, resource: this.sampler },
         { binding: 3, resource: this.textureA.createView() },
         { binding: 4, resource: { buffer: this.shadowUniformBuffer } },
+        { binding: 5, resource: this.modelShadowTexture.createView() },
       ],
     });
 

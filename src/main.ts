@@ -252,6 +252,13 @@ async function init(): Promise<void> {
 
   // --- Scene Objects ---
 
+  // Create interactive sphere
+  const sphere = new Sphere(device, format, uniformBuffer, lightUniformBuffer, sphereUniformBuffer);
+
+  // Create duck model (textured) - must be before Pool and Water which use its shadow texture
+  const model = new Model(device, format, uniformBuffer, lightUniformBuffer, modelUniformBuffer);
+  await model.load(`${base}models/duck/Duck.gltf`);
+
   // Create pool (walls and floor)
   const pool = new Pool(
     device,
@@ -261,11 +268,9 @@ async function init(): Promise<void> {
     tileSampler,
     lightUniformBuffer,
     sphereUniformBuffer,
-    shadowUniformBuffer
+    shadowUniformBuffer,
+    model.shadowTexture
   );
-
-  // Create interactive sphere
-  const sphere = new Sphere(device, format, uniformBuffer, lightUniformBuffer, sphereUniformBuffer);
 
   // Create water simulation (256x256 resolution)
   const water = new Water(
@@ -275,6 +280,7 @@ async function init(): Promise<void> {
     uniformBuffer,
     lightUniformBuffer,
     sphereUniformBuffer,
+    model.shadowTexture,
     shadowUniformBuffer,
     tileTexture,
     tileSampler,
@@ -286,10 +292,6 @@ async function init(): Promise<void> {
     refractionTexture,
     refractionSampler
   );
-
-  // Load duck model (textured) and reuse sphere uniforms for placement
-  const model = new Model(device, format, uniformBuffer, lightUniformBuffer, modelUniformBuffer);
-  await model.load(`${base}models/duck/Duck.gltf`);
 
   // --- Sphere Physics State ---
 
@@ -674,6 +676,10 @@ async function init(): Promise<void> {
       water.stepSimulation();
       water.stepSimulation();
       water.updateNormals();
+
+      // Update model shadow before caustics (shadow texture is sampled by caustics)
+      model.update(center.toArray(), duckScale);
+      model.renderShadow();
       water.updateCaustics();
     }
 
