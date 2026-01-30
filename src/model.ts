@@ -3,6 +3,7 @@ import { mat4, vec3 } from 'wgpu-matrix';
 
 import modelVertShader from './shaders/model/model.vert.wgsl';
 import modelFragShader from './shaders/model/model.frag.wgsl';
+import modelReflectionFragShader from './shaders/model/model.reflection.frag.wgsl';
 
 type Gltf = {
   scenes?: { nodes?: number[] }[];
@@ -170,7 +171,12 @@ export class Model {
       code: modelFragShader,
     });
 
-    const createPipeline = (label: string, cullMode: GPUCullMode): GPURenderPipeline => {
+    const reflectionFragmentShaderModule = this.device.createShaderModule({
+      label: 'Model Reflection Fragment Shader',
+      code: modelReflectionFragShader,
+    });
+
+    const createPipeline = (label: string, cullMode: GPUCullMode, fragModule: GPUShaderModule): GPURenderPipeline => {
       return this.device.createRenderPipeline({
         label,
         layout: 'auto',
@@ -193,7 +199,7 @@ export class Model {
           ],
         },
         fragment: {
-          module: fragmentShaderModule,
+          module: fragModule,
           entryPoint: 'fs_main',
           targets: [{ format: this.format }],
         },
@@ -209,8 +215,8 @@ export class Model {
       });
     };
 
-    this.pipeline = createPipeline('Model Pipeline', 'back');
-    this.reflectionPipeline = createPipeline('Model Reflection Pipeline', 'front');
+    this.pipeline = createPipeline('Model Pipeline', 'back', fragmentShaderModule);
+    this.reflectionPipeline = createPipeline('Model Reflection Pipeline', 'front', reflectionFragmentShaderModule);
   }
 
   private async loadTexture(gltf: Gltf, baseUrl: string): Promise<void> {
