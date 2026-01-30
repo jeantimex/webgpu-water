@@ -6,106 +6,224 @@ Copyright 2011 Evan Wallace
 Released under the MIT license
 -->
 
-<!DOCTYPE html>
-<html><head>
-  <title>WebGPU Water</title>
-  <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
-  <meta name="viewport" content="initial-scale=1.0, user-scalable=no">
-  <style type="text/css">
-    body { font: 13px/140% Arial, sans-serif; background: black; color: white; overflow: hidden; }
-    a { color: inherit; cursor: pointer; }
-    img { display: none; }
-    ul { padding: 0 0 0 20px; }
-    h1 { font: bold italic 30px/30px Georgia; text-align: center; }
-    h2 { font: bold italic 17px/17px Georgia; padding-top: 10px; }
-    small { display: block; font-size: 11px; line-height: 15px; }
-    canvas { position: absolute; top: 0; left: 0; touch-action: none; }
-    #help { position: absolute; top: 0; right: 0; bottom: 0; width: 280px; padding-right: 20px; overflow: auto; }
-    #loading { position: absolute; left: 0; top: 50%; right: 300px; text-align: center; margin-top: -8px; }
-    #help-toggle { display: none; position: absolute; top: 10px; right: 10px; z-index: 10; cursor: pointer; user-select: none; color: white; background: #222; padding: 5px; border-radius: 4px; transition: right 0.3s ease-in-out; width: 24px; height: 24px; line-height: 24px; text-align: center; }
-    .lil-gui.lil-auto-place, .lil-gui.autoPlace {
-      right: auto !important;
-      left: 10px !important;
-      top: 10px !important;
-      --width: 170px;
-    }
-    .lil-gui .lil-controller {
-      display: flex !important;
-      width: 100% !important;
-      justify-content: space-between !important;
-      align-items: center !important;
-      padding-left: 4px !important;
-      padding-right: 4px !important;
-      box-sizing: border-box !important;
-    }
-    .lil-gui .lil-controller .lil-name {
-      width: auto !important;
-      min-width: 0 !important;
-      flex-grow: 1 !important;
-    }
-    .lil-gui .lil-controller .lil-widget {
-      width: auto !important;
-      display: flex !important;
-      justify-content: flex-end !important;
-      align-items: center !important;
-    }
-    @media (max-width: 600px) {
-      #help {
-        width: 200px;
-        background: #222;
-        padding-left: 10px;
-        padding-top: 40px;
-        z-index: 5;
-        transition: transform 0.3s ease-in-out;
-        transform: translateX(0);
+<!doctype html>
+<html>
+  <head>
+    <title>WebGPU Water</title>
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet" />
+    <meta name="viewport" content="initial-scale=1.0, user-scalable=no" />
+    <style type="text/css">
+      body {
+        font:
+          13px/140% Arial,
+          sans-serif;
+        background: black;
+        color: white;
+        overflow: hidden;
       }
-      #help.collapsed {
-        transform: translateX(100%);
+      a {
+        color: inherit;
+        cursor: pointer;
+      }
+      img {
+        display: none;
+      }
+      ul {
+        padding: 0 0 0 20px;
+      }
+      h1 {
+        font: bold italic 30px/30px Georgia;
+        text-align: center;
+      }
+      h2 {
+        font: bold italic 17px/17px Georgia;
+        padding-top: 10px;
+      }
+      small {
         display: block;
+        font-size: 11px;
+        line-height: 15px;
       }
-      #help.collapsed + #help-toggle {
+      canvas {
+        position: absolute;
+        top: 0;
+        left: 0;
+        touch-action: none;
+      }
+      #help {
+        position: absolute;
+        top: 0;
+        right: 0;
+        bottom: 0;
+        width: 280px;
+        padding-right: 20px;
+        overflow: auto;
+      }
+      #loading {
+        position: absolute;
+        left: 0;
+        top: 50%;
+        right: 300px;
+        text-align: center;
+        margin-top: -8px;
+      }
+      #help-toggle {
+        display: none;
+        position: absolute;
+        top: 10px;
         right: 10px;
+        z-index: 10;
+        cursor: pointer;
+        user-select: none;
+        color: white;
+        background: #222;
+        padding: 5px;
+        border-radius: 4px;
+        transition: right 0.3s ease-in-out;
+        width: 24px;
+        height: 24px;
+        line-height: 24px;
+        text-align: center;
       }
-      #help:not(.collapsed) + #help-toggle {
-        right: 196px;
+      .lil-gui.lil-auto-place,
+      .lil-gui.autoPlace {
+        right: auto !important;
+        left: 10px !important;
+        top: 10px !important;
+        --width: 170px;
       }
-      #help-toggle { display: block; }
-    }
-  </style>
-  <script type="module" crossorigin src="/webgpu-water/assets/index-CrwQ90wG.js"></script>
-</head><body>
-  <div id="help" class="collapsed">
-    <h1>WebGPU Water</h1>
-    <p>Made by <a href="http://madebyevan.com/" target="_blank" rel="noopener noreferrer">Evan Wallace</a></p>
-    <p>Ported to WebGPU by <a href="https://github.com/jeantimex" target="_blank" rel="noopener noreferrer">jeantimex</a></p>
-    <p><svg height="16" viewBox="0 0 16 16" width="16" style="fill: currentColor; vertical-align: text-bottom; margin-right: 4px;"><path fill-rule="evenodd" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.58-.18-3.24-.79-3.24-3.5 0-.77.28-1.4.73-1.89-.07-.19-.32-1.1.07-2.27 0 0 .59-.19 1.95.73.57-.16 1.18-.24 1.8-.24.62 0 1.23.08 1.8.24 1.36-.92 1.95-.73 1.95-.73.39 1.17.14 2.08.07 2.27.45.49.73 1.11.73 1.89 0 2.72-1.67 3.32-3.24 3.5.26.22.48.65.48 1.32 0 .96-.01 1.73-.01 1.97 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"></path></svg><a href="https://github.com/jeantimex/webgpu-water" target="_blank" rel="noopener noreferrer">jeantimex/webgpu-water</a></p>
-    <p>This demo requires a browser that supports WebGPU. If you can't run the demo, you can still see the original WebGL implementation at <a href="https://madebyevan.com/webgl-water/" target="_blank" rel="noopener noreferrer">madebyevan.com/webgl-water/</a>.</p>
-    <h2>Interactions:</h2>
-    <ul>
-      <li>Draw on the water to make ripples</li>
-      <li>Drag the background to rotate the camera</li>
-      <li>Press SPACEBAR to pause and unpause</li>
-      <li>Drag the sphere to move it around</li>
-      <li>Press the L key to set the light direction</li>
-      <li>Press the G key to toggle gravity</li>
-    </ul>
-    <h2>Features:</h2>
-    <ul>
-      <li>Raytraced reflections and refractions</li>
-      <li>Analytic ambient occlusion</li>
-      <li>Heightfield water simulation</li>
-      <li>Soft shadows</li>
-      <li>Real-time <a href="https://medium.com/@evanwallace/rendering-realtime-caustics-in-webgl-2a99a29a0b2c" target="_blank" rel="noopener noreferrer">Caustics</a></li>
-    </ul>
-    <p><small>Tile texture from <a href="http://www.flickr.com/photos/zooboing/3682834083/" target="_blank" rel="noopener noreferrer">zooboing</a> on Flickr</small></p>
-  </div>
-  <div id="help-toggle" class="material-icons">menu</div>
-  <div id="loading">Loading...</div>
-  <img id="tiles" src="tiles.jpg">
-  <img id="xneg" src="xneg.jpg">
-  <img id="xpos" src="xpos.jpg">
-  <img id="ypos" src="ypos.jpg">
-  <img id="zneg" src="zneg.jpg">
-  <img id="zpos" src="zpos.jpg">
-  <canvas></canvas>
-</body></html>
+      .lil-gui .lil-controller {
+        display: flex !important;
+        width: 100% !important;
+        justify-content: space-between !important;
+        align-items: center !important;
+        padding-left: 4px !important;
+        padding-right: 4px !important;
+        box-sizing: border-box !important;
+      }
+      .lil-gui .lil-controller .lil-name {
+        width: auto !important;
+        min-width: 0 !important;
+        flex-grow: 1 !important;
+      }
+      .lil-gui .lil-controller .lil-widget {
+        width: auto !important;
+        display: flex !important;
+        justify-content: flex-end !important;
+        align-items: center !important;
+      }
+      @media (max-width: 600px) {
+        #help {
+          width: 200px;
+          background: #222;
+          padding-left: 10px;
+          padding-top: 40px;
+          z-index: 5;
+          transition: transform 0.3s ease-in-out;
+          transform: translateX(0);
+        }
+        #help.collapsed {
+          transform: translateX(100%);
+          display: block;
+        }
+        #help.collapsed + #help-toggle {
+          right: 10px;
+        }
+        #help:not(.collapsed) + #help-toggle {
+          right: 196px;
+        }
+        #help-toggle {
+          display: block;
+        }
+      }
+    </style>
+    <script type="module" crossorigin src="/webgpu-water/assets/index-BeBaYGtZ.js"></script>
+  </head>
+  <body>
+    <div id="help" class="collapsed">
+      <h1>WebGPU Water</h1>
+      <p>
+        Made by
+        <a href="http://madebyevan.com/" target="_blank" rel="noopener noreferrer">Evan Wallace</a>
+      </p>
+      <p>
+        Ported to WebGPU by
+        <a href="https://github.com/jeantimex" target="_blank" rel="noopener noreferrer"
+          >jeantimex</a
+        >
+      </p>
+      <p>
+        <svg
+          height="16"
+          viewBox="0 0 16 16"
+          width="16"
+          style="fill: currentColor; vertical-align: text-bottom; margin-right: 4px"
+        >
+          <path
+            fill-rule="evenodd"
+            d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.58-.18-3.24-.79-3.24-3.5 0-.77.28-1.4.73-1.89-.07-.19-.32-1.1.07-2.27 0 0 .59-.19 1.95.73.57-.16 1.18-.24 1.8-.24.62 0 1.23.08 1.8.24 1.36-.92 1.95-.73 1.95-.73.39 1.17.14 2.08.07 2.27.45.49.73 1.11.73 1.89 0 2.72-1.67 3.32-3.24 3.5.26.22.48.65.48 1.32 0 .96-.01 1.73-.01 1.97 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"
+          ></path></svg
+        ><a
+          href="https://github.com/jeantimex/webgpu-water"
+          target="_blank"
+          rel="noopener noreferrer"
+          >jeantimex/webgpu-water</a
+        >
+      </p>
+      <p>
+        This demo requires a browser that supports WebGPU. If you can't run the demo, you can still
+        see the original WebGL implementation at
+        <a href="https://madebyevan.com/webgl-water/" target="_blank" rel="noopener noreferrer"
+          >madebyevan.com/webgl-water/</a
+        >.
+      </p>
+      <h2>Interactions:</h2>
+      <ul>
+        <li>Draw on the water to make ripples</li>
+        <li>Drag the background to rotate the camera</li>
+        <li>Press SPACEBAR to pause and unpause</li>
+        <li>Drag the sphere to move it around</li>
+        <li>Press the L key to set the light direction</li>
+        <li>Press the G key to toggle gravity</li>
+      </ul>
+      <h2>Features:</h2>
+      <ul>
+        <li>Raytraced reflections and refractions</li>
+        <li>Analytic ambient occlusion</li>
+        <li>Heightfield water simulation</li>
+        <li>Soft shadows</li>
+        <li>
+          Real-time
+          <a
+            href="https://medium.com/@evanwallace/rendering-realtime-caustics-in-webgl-2a99a29a0b2c"
+            target="_blank"
+            rel="noopener noreferrer"
+            >Caustics</a
+          >
+        </li>
+      </ul>
+      <p>
+        <small
+          >Tile texture from
+          <a
+            href="http://www.flickr.com/photos/zooboing/3682834083/"
+            target="_blank"
+            rel="noopener noreferrer"
+            >zooboing</a
+          >
+          on Flickr</small
+        >
+        <small>Last updated: January 30 2026</small>
+      </p>
+    </div>
+    <div id="help-toggle" class="material-icons">menu</div>
+    <div id="loading">Loading...</div>
+    <img id="tiles" src="tiles.jpg" />
+    <img id="xneg" src="xneg.jpg" />
+    <img id="xpos" src="xpos.jpg" />
+    <img id="ypos" src="ypos.jpg" />
+    <img id="zneg" src="zneg.jpg" />
+    <img id="zpos" src="zpos.jpg" />
+    <canvas></canvas>
+  </body>
+</html>
