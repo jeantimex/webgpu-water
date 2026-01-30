@@ -126,6 +126,40 @@ async function init(): Promise<void> {
   });
   const skySampler = device.createSampler({ magFilter: 'linear', minFilter: 'linear' });
 
+  // Reflection render target (placeholder size, resized on demand)
+  const reflectionSampler = device.createSampler({
+    magFilter: 'linear',
+    minFilter: 'linear',
+    addressModeU: 'clamp-to-edge',
+    addressModeV: 'clamp-to-edge',
+  });
+  const refractionSampler = device.createSampler({
+    magFilter: 'linear',
+    minFilter: 'linear',
+    addressModeU: 'clamp-to-edge',
+    addressModeV: 'clamp-to-edge',
+  });
+  let reflectionTexture = device.createTexture({
+    size: [1, 1],
+    format,
+    usage: GPUTextureUsage.RENDER_ATTACHMENT | GPUTextureUsage.TEXTURE_BINDING,
+  });
+  let reflectionDepthTexture = device.createTexture({
+    size: [1, 1],
+    format: 'depth24plus',
+    usage: GPUTextureUsage.RENDER_ATTACHMENT,
+  });
+  let refractionTexture = device.createTexture({
+    size: [1, 1],
+    format,
+    usage: GPUTextureUsage.RENDER_ATTACHMENT | GPUTextureUsage.TEXTURE_BINDING,
+  });
+  let refractionDepthTexture = device.createTexture({
+    size: [1, 1],
+    format: 'depth24plus',
+    usage: GPUTextureUsage.RENDER_ATTACHMENT,
+  });
+
   // --- Camera State ---
 
   /** Camera pitch angle in degrees */
@@ -165,8 +199,26 @@ async function init(): Promise<void> {
     usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
   });
 
+  // Reflection camera matrix (mat4 = 64 bytes)
+  const reflectionUniformBuffer = device.createBuffer({
+    size: 64,
+    usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
+  });
+
+  // Reflection pass common uniforms (mat4 + vec3 + padding = 80 bytes)
+  const reflectionCommonUniformBuffer = device.createBuffer({
+    size: 80,
+    usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
+  });
+
   // Sphere position and radius (vec3 + float = 16 bytes)
   const sphereUniformBuffer = device.createBuffer({
+    size: 16,
+    usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
+  });
+
+  // Duck model placement (vec3 + float = 16 bytes)
+  const modelUniformBuffer = device.createBuffer({
     size: 16,
     usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
   });
@@ -227,11 +279,16 @@ async function init(): Promise<void> {
     tileTexture,
     tileSampler,
     skyTexture,
-    skySampler
+    skySampler,
+    reflectionUniformBuffer,
+    reflectionTexture,
+    reflectionSampler,
+    refractionTexture,
+    refractionSampler
   );
 
   // Load duck model (textured) and reuse sphere uniforms for placement
-  const model = new Model(device, format, uniformBuffer, lightUniformBuffer, sphereUniformBuffer);
+  const model = new Model(device, format, uniformBuffer, lightUniformBuffer, modelUniformBuffer);
   await model.load(`${base}models/duck/Duck.gltf`);
 
   // --- Sphere Physics State ---
@@ -242,6 +299,8 @@ async function init(): Promise<void> {
   let oldCenter = center.clone();
   /** Sphere radius */
   const radius = 0.25;
+  /** Duck scale */
+  const duckScale = 0.25;
   /** Current sphere velocity */
   let velocity = new Vector();
   /** Gravity acceleration vector */
@@ -286,6 +345,7 @@ async function init(): Promise<void> {
 
   // Initialize sphere position
   sphere.update(center.toArray(), radius);
+  model.update(center.toArray(), duckScale);
 
   // Add initial random ripples
   for (let i = 0; i < 20; i++) {
@@ -469,6 +529,33 @@ async function init(): Promise<void> {
       usage: GPUTextureUsage.RENDER_ATTACHMENT,
     });
 
+    reflectionTexture.destroy();
+    reflectionDepthTexture.destroy();
+    refractionTexture.destroy();
+    refractionDepthTexture.destroy();
+    reflectionTexture = device.createTexture({
+      size: [canvas.width, canvas.height],
+      format,
+      usage: GPUTextureUsage.RENDER_ATTACHMENT | GPUTextureUsage.TEXTURE_BINDING,
+    });
+    reflectionDepthTexture = device.createTexture({
+      size: [canvas.width, canvas.height],
+      format: 'depth24plus',
+      usage: GPUTextureUsage.RENDER_ATTACHMENT,
+    });
+    refractionTexture = device.createTexture({
+      size: [canvas.width, canvas.height],
+      format,
+      usage: GPUTextureUsage.RENDER_ATTACHMENT | GPUTextureUsage.TEXTURE_BINDING,
+    });
+    refractionDepthTexture = device.createTexture({
+      size: [canvas.width, canvas.height],
+      format: 'depth24plus',
+      usage: GPUTextureUsage.RENDER_ATTACHMENT,
+    });
+    water.setReflectionTexture(reflectionTexture);
+    water.setRefractionTexture(refractionTexture);
+
     render();
   }
 
@@ -514,6 +601,26 @@ async function init(): Promise<void> {
     uniformData.set(eyeVec, 16);
 
     device.queue.writeBuffer(uniformBuffer, 0, uniformData);
+
+    // Reflection camera (mirror across water plane y=0)
+    const reflectionMatrix = mat4.identity();
+    mat4.scale(reflectionMatrix, [1, -1, 1], reflectionMatrix);
+    const reflectionViewMatrix = mat4.multiply(viewMatrix, reflectionMatrix);
+    const reflectionViewProjectionMatrix = mat4.multiply(
+      projectionMatrix,
+      reflectionViewMatrix
+    );
+
+    device.queue.writeBuffer(
+      reflectionUniformBuffer,
+      0,
+      new Float32Array(reflectionViewProjectionMatrix)
+    );
+
+    const reflectionUniformData = new Float32Array(20);
+    reflectionUniformData.set(reflectionViewProjectionMatrix, 0);
+    reflectionUniformData.set(eyeVec, 16);
+    device.queue.writeBuffer(reflectionCommonUniformBuffer, 0, reflectionUniformData);
   }
 
   /**
@@ -574,10 +681,57 @@ async function init(): Promise<void> {
 
     // Update camera uniforms
     updateUniforms();
+    model.update(center.toArray(), duckScale);
 
     // --- GPU Render Pass ---
 
     const commandEncoder = device.createCommandEncoder();
+
+    // Render refraction (duck only) to offscreen texture
+    const refractionPass = commandEncoder.beginRenderPass({
+      colorAttachments: [
+        {
+          view: refractionTexture.createView(),
+          clearValue: { r: 0, g: 0, b: 0, a: 0 },
+          loadOp: 'clear',
+          storeOp: 'store',
+        },
+      ],
+      depthStencilAttachment: {
+        view: refractionDepthTexture.createView(),
+        depthClearValue: 1.0,
+        depthLoadOp: 'clear',
+        depthStoreOp: 'store',
+      },
+    });
+    model.render(refractionPass, water.textureA, water.sampler, water.causticsTexture, {
+      commonUniforms: uniformBuffer,
+    });
+    refractionPass.end();
+
+    // Render planar reflection (duck only) to offscreen texture
+    const reflectionPass = commandEncoder.beginRenderPass({
+      colorAttachments: [
+        {
+          view: reflectionTexture.createView(),
+          clearValue: { r: 0, g: 0, b: 0, a: 0 },
+          loadOp: 'clear',
+          storeOp: 'store',
+        },
+      ],
+      depthStencilAttachment: {
+        view: reflectionDepthTexture.createView(),
+        depthClearValue: 1.0,
+        depthLoadOp: 'clear',
+        depthStoreOp: 'store',
+      },
+    });
+    model.render(reflectionPass, water.textureA, water.sampler, water.causticsTexture, {
+      commonUniforms: reflectionCommonUniformBuffer,
+      useReflectionPipeline: true,
+    });
+    reflectionPass.end();
+
     const passEncoder = commandEncoder.beginRenderPass({
       colorAttachments: [
         {

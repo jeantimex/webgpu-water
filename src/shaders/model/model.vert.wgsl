@@ -1,7 +1,7 @@
 #include "../common/bindings.wgsl"
 
 @binding(0) @group(0) var<uniform> commonUniforms : CommonUniforms;
-@binding(1) @group(0) var<uniform> sphereUniforms : SphereUniforms;
+@binding(1) @group(0) var<uniform> modelUniforms : ModelUniforms;
 @binding(2) @group(0) var<uniform> light : LightUniforms;
 @binding(3) @group(0) var waterSampler : sampler;
 @binding(4) @group(0) var waterTexture : texture_2d<f32>;
@@ -23,7 +23,7 @@ fn vs_main(
   @location(2) uv : vec2f
 ) -> VertexOutput {
   var output : VertexOutput;
-  let worldPos = sphereUniforms.center + position * sphereUniforms.radius;
+  let worldPos = modelUniforms.center + position * modelUniforms.scale;
   output.position = commonUniforms.viewProjectionMatrix * vec4f(worldPos, 1.0);
   output.worldPos = worldPos;
   output.normal = normal;

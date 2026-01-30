@@ -76,6 +76,21 @@ export class Water {
   /** Sampler for skybox texture */
   private skySampler: GPUSampler;
 
+  /** Reflection camera uniform buffer for planar reflections */
+  private reflectionUniformBuffer: GPUBuffer;
+
+  /** Planar reflection texture for model reflections */
+  private reflectionTexture: GPUTexture;
+
+  /** Sampler for planar reflection texture */
+  private reflectionSampler: GPUSampler;
+
+  /** Refraction texture for model visibility under water */
+  private refractionTexture: GPUTexture;
+
+  /** Sampler for refraction texture */
+  private refractionSampler: GPUSampler;
+
   // --- Physics State ---
   // Double-buffered textures for ping-pong rendering
 
@@ -160,6 +175,11 @@ export class Water {
    * @param tileSampler - Tile texture sampler
    * @param skyTexture - Skybox cubemap texture
    * @param skySampler - Skybox sampler
+   * @param reflectionUniformBuffer - Reflection camera uniform buffer
+   * @param reflectionTexture - Planar reflection texture
+   * @param reflectionSampler - Sampler for planar reflection texture
+   * @param refractionTexture - Refraction texture
+   * @param refractionSampler - Refraction sampler
    */
   constructor(
     device: GPUDevice,
@@ -172,7 +192,12 @@ export class Water {
     tileTexture: GPUTexture,
     tileSampler: GPUSampler,
     skyTexture: GPUTexture,
-    skySampler: GPUSampler
+    skySampler: GPUSampler,
+    reflectionUniformBuffer: GPUBuffer,
+    reflectionTexture: GPUTexture,
+    reflectionSampler: GPUSampler,
+    refractionTexture: GPUTexture,
+    refractionSampler: GPUSampler
   ) {
     this.device = device;
     this.width = width;
@@ -187,6 +212,11 @@ export class Water {
     this.tileSampler = tileSampler;
     this.skyTexture = skyTexture;
     this.skySampler = skySampler;
+    this.reflectionUniformBuffer = reflectionUniformBuffer;
+    this.reflectionTexture = reflectionTexture;
+    this.reflectionSampler = reflectionSampler;
+    this.refractionTexture = refractionTexture;
+    this.refractionSampler = refractionSampler;
 
     // Create double-buffered simulation textures
     this.textureA = this.createTexture();
@@ -553,6 +583,11 @@ export class Water {
         { binding: 8, visibility: GPUShaderStage.FRAGMENT, texture: { viewDimension: 'cube' } },
         { binding: 9, visibility: GPUShaderStage.FRAGMENT, texture: {} },
         { binding: 10, visibility: GPUShaderStage.FRAGMENT, buffer: { type: 'uniform' } },
+        { binding: 11, visibility: GPUShaderStage.FRAGMENT, buffer: { type: 'uniform' } },
+        { binding: 12, visibility: GPUShaderStage.FRAGMENT, sampler: {} },
+        { binding: 13, visibility: GPUShaderStage.FRAGMENT, texture: {} },
+        { binding: 14, visibility: GPUShaderStage.FRAGMENT, sampler: {} },
+        { binding: 15, visibility: GPUShaderStage.FRAGMENT, texture: {} },
       ],
     });
 
@@ -648,6 +683,11 @@ export class Water {
         { binding: 8, resource: this.skyTexture.createView({ dimension: 'cube' }) },
         { binding: 9, resource: this.causticsTexture.createView() },
         { binding: 10, resource: { buffer: this.shadowUniformBuffer } },
+        { binding: 11, resource: { buffer: this.reflectionUniformBuffer } },
+        { binding: 12, resource: this.reflectionSampler },
+        { binding: 13, resource: this.reflectionTexture.createView() },
+        { binding: 14, resource: this.refractionSampler },
+        { binding: 15, resource: this.refractionTexture.createView() },
       ],
     });
 
@@ -662,6 +702,20 @@ export class Water {
     passEncoder.setPipeline(this.surfacePipelineUnder);
     passEncoder.setBindGroup(0, bindGroup);
     passEncoder.drawIndexed(this.vertexCount);
+  }
+
+  /**
+   * Updates the planar reflection texture when the render target changes size.
+   */
+  setReflectionTexture(texture: GPUTexture): void {
+    this.reflectionTexture = texture;
+  }
+
+  /**
+   * Updates the refraction texture when the render target changes size.
+   */
+  setRefractionTexture(texture: GPUTexture): void {
+    this.refractionTexture = texture;
   }
 
   // =========================================================================

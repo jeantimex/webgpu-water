@@ -6,6 +6,11 @@ struct CommonUniforms {
   eyePosition : vec3f,
 }
 
+// Reflection camera uniforms for planar reflection sampling
+struct ReflectionUniforms {
+  viewProjectionMatrix : mat4x4f,
+}
+
 // Light direction
 struct LightUniforms {
    direction : vec3f,
@@ -15,6 +20,12 @@ struct LightUniforms {
 struct SphereUniforms {
   center : vec3f,
   radius : f32,
+}
+
+// Model placement (position + uniform scale)
+struct ModelUniforms {
+  center : vec3f,
+  scale : f32,
 }
 
 // Shadow toggle flags

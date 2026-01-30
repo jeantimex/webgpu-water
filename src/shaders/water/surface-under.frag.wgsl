@@ -13,6 +13,11 @@
 @binding(7) @group(0) var skySampler : sampler;
 @binding(8) @group(0) var skyTexture : texture_cube<f32>;
 @binding(9) @group(0) var causticTexture : texture_2d<f32>;
+@binding(11) @group(0) var<uniform> reflection : ReflectionUniforms;
+@binding(12) @group(0) var reflectionSampler : sampler;
+@binding(13) @group(0) var reflectionTexture : texture_2d<f32>;
+@binding(14) @group(0) var refractionSampler : sampler;
+@binding(15) @group(0) var refractionTexture : texture_2d<f32>;
 
 // Physical constants
 const IOR_AIR : f32 = 1.0;

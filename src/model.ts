@@ -37,7 +37,7 @@ export class Model {
 
   private commonUniforms: GPUBuffer;
   private lightUniforms: GPUBuffer;
-  private sphereUniforms: GPUBuffer;
+  private modelUniforms: GPUBuffer;
 
   private positionBuffer!: GPUBuffer;
   private normalBuffer!: GPUBuffer;
@@ -47,6 +47,7 @@ export class Model {
   private indexCount = 0;
 
   private pipeline!: GPURenderPipeline;
+  private reflectionPipeline!: GPURenderPipeline;
   private modelSampler!: GPUSampler;
   private modelTexture!: GPUTexture;
 
@@ -57,15 +58,23 @@ export class Model {
     format: GPUTextureFormat,
     uniformBuffer: GPUBuffer,
     lightUniformBuffer: GPUBuffer,
-    sphereUniformBuffer: GPUBuffer
+    modelUniformBuffer: GPUBuffer
   ) {
     this.device = device;
     this.format = format;
     this.commonUniforms = uniformBuffer;
     this.lightUniforms = lightUniformBuffer;
-    this.sphereUniforms = sphereUniformBuffer;
+    this.modelUniforms = modelUniformBuffer;
 
     this.createPipeline();
+  }
+
+  update(position: [number, number, number], scale: number): void {
+    this.device.queue.writeBuffer(
+      this.modelUniforms,
+      0,
+      new Float32Array([position[0], position[1], position[2], scale])
+    );
   }
 
   async load(url: string): Promise<void> {
@@ -95,7 +104,7 @@ export class Model {
 
     const { centered, radius } = this.centerAndNormalize(transformedPositions);
     const normalizedPositions = centered.map((v) => v / radius);
-    this.alignToBottom(normalizedPositions, 0.02);
+    // this.alignToBottom(normalizedPositions, 0.02);
 
     this.positionBuffer = this.createBuffer(new Float32Array(normalizedPositions), GPUBufferUsage.VERTEX);
     this.normalBuffer = this.createBuffer(transformedNormals, GPUBufferUsage.VERTEX);
@@ -119,15 +128,19 @@ export class Model {
     passEncoder: GPURenderPassEncoder,
     waterTexture: GPUTexture,
     waterSampler: GPUSampler,
-    causticsTexture: GPUTexture
+    causticsTexture: GPUTexture,
+    options?: { commonUniforms?: GPUBuffer; useReflectionPipeline?: boolean }
   ): void {
     if (!this.loaded) return;
 
+    const commonUniforms = options?.commonUniforms ?? this.commonUniforms;
+    const pipeline = options?.useReflectionPipeline ? this.reflectionPipeline : this.pipeline;
+
     const bindGroup = this.device.createBindGroup({
-      layout: this.pipeline.getBindGroupLayout(0),
+      layout: pipeline.getBindGroupLayout(0),
       entries: [
-        { binding: 0, resource: { buffer: this.commonUniforms } },
-        { binding: 1, resource: { buffer: this.sphereUniforms } },
+        { binding: 0, resource: { buffer: commonUniforms } },
+        { binding: 1, resource: { buffer: this.modelUniforms } },
         { binding: 2, resource: { buffer: this.lightUniforms } },
         { binding: 3, resource: waterSampler },
         { binding: 4, resource: waterTexture.createView() },
@@ -137,7 +150,7 @@ export class Model {
       ],
     });
 
-    passEncoder.setPipeline(this.pipeline);
+    passEncoder.setPipeline(pipeline);
     passEncoder.setBindGroup(0, bindGroup);
     passEncoder.setVertexBuffer(0, this.positionBuffer);
     passEncoder.setVertexBuffer(1, this.normalBuffer);
@@ -157,42 +170,47 @@ export class Model {
       code: modelFragShader,
     });
 
-    this.pipeline = this.device.createRenderPipeline({
-      label: 'Model Pipeline',
-      layout: 'auto',
-      vertex: {
-        module: vertexShaderModule,
-        entryPoint: 'vs_main',
-        buffers: [
-          {
-            arrayStride: 3 * 4,
-            attributes: [{ shaderLocation: 0, offset: 0, format: 'float32x3' }],
-          },
-          {
-            arrayStride: 3 * 4,
-            attributes: [{ shaderLocation: 1, offset: 0, format: 'float32x3' }],
-          },
-          {
-            arrayStride: 2 * 4,
-            attributes: [{ shaderLocation: 2, offset: 0, format: 'float32x2' }],
-          },
-        ],
-      },
-      fragment: {
-        module: fragmentShaderModule,
-        entryPoint: 'fs_main',
-        targets: [{ format: this.format }],
-      },
-      primitive: {
-        topology: 'triangle-list',
-        cullMode: 'back',
-      },
-      depthStencil: {
-        depthWriteEnabled: true,
-        depthCompare: 'less',
-        format: 'depth24plus',
-      },
-    });
+    const createPipeline = (label: string, cullMode: GPUCullMode): GPURenderPipeline => {
+      return this.device.createRenderPipeline({
+        label,
+        layout: 'auto',
+        vertex: {
+          module: vertexShaderModule,
+          entryPoint: 'vs_main',
+          buffers: [
+            {
+              arrayStride: 3 * 4,
+              attributes: [{ shaderLocation: 0, offset: 0, format: 'float32x3' }],
+            },
+            {
+              arrayStride: 3 * 4,
+              attributes: [{ shaderLocation: 1, offset: 0, format: 'float32x3' }],
+            },
+            {
+              arrayStride: 2 * 4,
+              attributes: [{ shaderLocation: 2, offset: 0, format: 'float32x2' }],
+            },
+          ],
+        },
+        fragment: {
+          module: fragmentShaderModule,
+          entryPoint: 'fs_main',
+          targets: [{ format: this.format }],
+        },
+        primitive: {
+          topology: 'triangle-list',
+          cullMode,
+        },
+        depthStencil: {
+          depthWriteEnabled: true,
+          depthCompare: 'less',
+          format: 'depth24plus',
+        },
+      });
+    };
+
+    this.pipeline = createPipeline('Model Pipeline', 'back');
+    this.reflectionPipeline = createPipeline('Model Reflection Pipeline', 'front');
   }
 
   private async loadTexture(gltf: Gltf, baseUrl: string): Promise<void> {

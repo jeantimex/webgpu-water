@@ -1,7 +1,7 @@
 #include "../common/bindings.wgsl"
 
 @binding(0) @group(0) var<uniform> commonUniforms : CommonUniforms;
-@binding(1) @group(0) var<uniform> sphereUniforms : SphereUniforms;
+@binding(1) @group(0) var<uniform> modelUniforms : ModelUniforms;
 @binding(2) @group(0) var<uniform> light : LightUniforms;
 @binding(3) @group(0) var waterSampler : sampler;
 @binding(4) @group(0) var waterTexture : texture_2d<f32>;
