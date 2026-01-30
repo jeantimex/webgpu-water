@@ -157,18 +157,16 @@ fn sampleReflection(worldPos: vec3f) -> vec4f {
 }
 
 fn sampleRefraction(worldPos: vec3f, normal: vec3f) -> vec4f {
-    // Determine where the refracted ray hits the plane at sphere.center.y
+    // Refract into the water and intersect the duck's proxy sphere.
     let incomingRay = normalize(worldPos - commonUniforms.eyePosition);
     let refractedRay = refract(incomingRay, normal, IOR_AIR / IOR_WATER);
-    
-    // Fallback if total internal reflection or parallel (unlikely for surface-above)
+
     var targetPos = worldPos;
-    
-    if (abs(refractedRay.y) > 0.001) {
-        let t = (sphere.center.y - worldPos.y) / refractedRay.y;
-        if (t > 0.0) {
-             targetPos = worldPos + refractedRay * t;
-        }
+    var hitMask = 0.0;
+    let t = intersectSphere(worldPos, refractedRay, sphere.center, sphere.radius);
+    if (t < 1.0e6) {
+        targetPos = worldPos + refractedRay * t;
+        hitMask = 1.0;
     }
 
     // Project this 3D point back to screen space to find the UV to sample
@@ -181,7 +179,7 @@ fn sampleRefraction(worldPos: vec3f, normal: vec3f) -> vec4f {
     let inMax = step(uv, vec2f(1.0));
     let inBounds = inMin.x * inMin.y * inMax.x * inMax.y;
     let validW = step(0.0, clip.w);
-    let mask = inBounds * validW;
+    let mask = inBounds * validW * hitMask;
     return textureSample(refractionTexture, refractionSampler, uvClamped) * mask;
 }
 
