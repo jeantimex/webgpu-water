@@ -18,17 +18,22 @@ fn fs_main(
   let IOR_AIR = 1.0;
   let IOR_WATER = 1.333;
 
+  // When the camera is above water, only reflect the above-water parts.
+  // When the camera is below water, render the full model for underwater reflection.
+  let waterInfo = textureSampleLevel(waterTexture, waterSampler, worldPos.xz * 0.5 + 0.5, 0.0);
+  if (commonUniforms.eyePosition.y > 0.0 && worldPos.y < waterInfo.r - 0.01) {
+    discard;
+  }
+
   let baseColor = textureSample(modelTexture, modelSampler, uv).rgb;
   let n = normalize(normal);
-  
+
   // Use direct light for reflection (not refracted light)
   let diffuse = max(0.0, dot(-light.direction, n)) * 0.6;
-  
-  // No caustics or underwater tint needed for reflection
-  // Dummy usage of waterTexture and causticTexture to keep bind group layout compatible
-  let unusedW = textureSampleLevel(waterTexture, waterSampler, vec2f(0.0), 0.0).r;
-  let unusedC = textureSampleLevel(causticTexture, waterSampler, vec2f(0.0), 0.0).r;
-  let color = baseColor * (0.4 + diffuse) + (unusedW + unusedC) * 0.00001;
+
+  // Dummy usage of causticTexture to keep bind group layout compatible
+  let unused = textureSampleLevel(causticTexture, waterSampler, vec2f(0.0), 0.0).r;
+  let color = baseColor * (0.4 + diffuse) + unused * 0.00001;
 
   return vec4f(color, 1.0);
 }
