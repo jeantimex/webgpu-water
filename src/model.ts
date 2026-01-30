@@ -118,7 +118,7 @@ export class Model {
 
     const { centered, radius } = this.centerAndNormalize(transformedPositions);
     const normalizedPositions = centered.map((v) => v / radius);
-    // this.alignToBottom(normalizedPositions, 0.02);
+    this.alignToBottom(normalizedPositions, 0.0);
 
     this.positionBuffer = this.createBuffer(new Float32Array(normalizedPositions), GPUBufferUsage.VERTEX);
     this.normalBuffer = this.createBuffer(transformedNormals, GPUBufferUsage.VERTEX);
