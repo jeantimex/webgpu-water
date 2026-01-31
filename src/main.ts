@@ -324,15 +324,14 @@ async function init(): Promise<void> {
 
   type RenderMode = 'duck' | 'sphere';
   const renderOptions: Record<string, RenderMode> = {
-    'Rubber Duck': 'duck',
+    Duck: 'duck',
     Sphere: 'sphere',
   };
   const settings = {
     gravity: useSpherePhysics,
     followCamera: false,
     renderMode: 'duck' as RenderMode,
-    sphereDensity: 1.0,
-    duckDensity: 0.15,
+    density: 0.15,
   };
 
   gui
@@ -356,14 +355,8 @@ async function init(): Promise<void> {
       (document.activeElement as HTMLElement)?.blur();
     });
   gui
-    .add(settings, 'sphereDensity', 0.2, 3.0, 0.05)
-    .name('Sphere Density')
-    .onChange(() => {
-      (document.activeElement as HTMLElement)?.blur();
-    });
-  gui
-    .add(settings, 'duckDensity', 0.1, 3.0, 0.05)
-    .name('Duck Density')
+    .add(settings, 'density', 0.1, 3.0, 0.05)
+    .name('Density')
     .onChange(() => {
       (document.activeElement as HTMLElement)?.blur();
     });
@@ -674,8 +667,10 @@ async function init(): Promise<void> {
         // Apply gravity and buoyancy
         const percentUnderWater = Math.max(0, Math.min(1, (radius - center.y) / (2 * radius)));
 
-        const density = settings.renderMode === 'duck' ? settings.duckDensity : settings.sphereDensity;
-        const buoyancyScale = Math.min(2.5, (1.1 * percentUnderWater) / Math.max(0.05, density));
+        const buoyancyScale = Math.min(
+          2.5,
+          (1.1 * percentUnderWater) / Math.max(0.05, settings.density)
+        );
         // Gravity reduced by buoyancy when underwater (lower density => stronger buoyancy)
         velocity = velocity.add(gravity.multiply(seconds - seconds * buoyancyScale));
         // Water drag proportional to velocity squared
