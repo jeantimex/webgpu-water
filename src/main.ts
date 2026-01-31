@@ -305,9 +305,9 @@ async function init(): Promise<void> {
   const duckScale = 0.25;
   /** Proxy spheres for duck ripple interaction (model-space offsets/radii) */
   const duckRippleSpheres = [
-    { offset: new Vector(0.0, 0.0, 0.15), radius: 0.9, strength: 1.0 }, // body
-    { offset: new Vector(0.35, 0.1, 0.25), radius: 0.45, strength: 0.6 }, // head
-    { offset: new Vector(-0.35, 0.0, -0.1), radius: 0.4, strength: 0.5 }, // tail
+    { offset: new Vector(0.0, 0.0, 0.15), radius: 0.9, strength: 0.6 }, // body
+    { offset: new Vector(0.35, 0.1, 0.25), radius: 0.45, strength: 0.4 }, // head
+    { offset: new Vector(-0.35, 0.0, -0.1), radius: 0.4, strength: 0.35 }, // tail
   ];
   /** Current sphere velocity */
   let velocity = new Vector();
