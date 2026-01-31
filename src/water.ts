@@ -466,8 +466,9 @@ export class Water {
    * @param oldCenter - Previous sphere position [x, y, z]
    * @param newCenter - Current sphere position [x, y, z]
    * @param radius - Sphere radius
+   * @param strength - Displacement strength multiplier
    */
-  moveSphere(oldCenter: number[], newCenter: number[], radius: number): void {
+  moveSphere(oldCenter: number[], newCenter: number[], radius: number, strength = 1): void {
     const data = new Float32Array(8);
     data[0] = oldCenter[0];
     data[1] = oldCenter[1];
@@ -476,7 +477,7 @@ export class Water {
     data[4] = newCenter[0];
     data[5] = newCenter[1];
     data[6] = newCenter[2];
-    data[7] = 0; // padding
+    data[7] = strength;
     this.runPipeline(this.spherePipeline, data);
   }
 

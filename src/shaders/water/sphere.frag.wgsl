@@ -5,7 +5,7 @@ struct SphereUniforms {
   oldCenter : vec3f,  // Previous sphere position
   radius : f32,       // Sphere radius
   newCenter : vec3f,  // Current sphere position
-  padding : f32,      // Alignment padding
+  strength : f32,     // Displacement strength multiplier
 }
 @group(0) @binding(2) var<uniform> u : SphereUniforms;
 
@@ -27,8 +27,8 @@ fn fs_main(@location(0) uv : vec2f) -> @location(0) vec4f {
   var info = textureSample(waterTexture, waterSampler, uv);
 
   // Water rises where sphere was, falls where sphere is now
-  info.r += volumeInSphere(u.oldCenter, uv, u.radius);
-  info.r -= volumeInSphere(u.newCenter, uv, u.radius);
+  info.r += volumeInSphere(u.oldCenter, uv, u.radius) * u.strength;
+  info.r -= volumeInSphere(u.newCenter, uv, u.radius) * u.strength;
 
   return info;
 }
