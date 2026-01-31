@@ -331,6 +331,8 @@ async function init(): Promise<void> {
     gravity: useSpherePhysics,
     followCamera: false,
     renderMode: 'duck' as RenderMode,
+    sphereDensity: 1.0,
+    duckDensity: 0.15,
   };
 
   gui
@@ -350,6 +352,18 @@ async function init(): Promise<void> {
   gui
     .add(settings, 'followCamera')
     .name('Light From Camera')
+    .onChange(() => {
+      (document.activeElement as HTMLElement)?.blur();
+    });
+  gui
+    .add(settings, 'sphereDensity', 0.2, 3.0, 0.05)
+    .name('Sphere Density')
+    .onChange(() => {
+      (document.activeElement as HTMLElement)?.blur();
+    });
+  gui
+    .add(settings, 'duckDensity', 0.1, 3.0, 0.05)
+    .name('Duck Density')
     .onChange(() => {
       (document.activeElement as HTMLElement)?.blur();
     });
@@ -660,12 +674,17 @@ async function init(): Promise<void> {
         // Apply gravity and buoyancy
         const percentUnderWater = Math.max(0, Math.min(1, (radius - center.y) / (2 * radius)));
 
-        // Gravity reduced by buoyancy when underwater
-        velocity = velocity.add(gravity.multiply(seconds - 1.1 * seconds * percentUnderWater));
+        const density = settings.renderMode === 'duck' ? settings.duckDensity : settings.sphereDensity;
+        const buoyancyScale = Math.min(2.5, (1.1 * percentUnderWater) / Math.max(0.05, density));
+        // Gravity reduced by buoyancy when underwater (lower density => stronger buoyancy)
+        velocity = velocity.add(gravity.multiply(seconds - seconds * buoyancyScale));
         // Water drag proportional to velocity squared
         velocity = velocity.subtract(
           velocity.unit().multiply(percentUnderWater * seconds * velocity.dot(velocity))
         );
+        // Match water surface damping (update.frag.wgsl uses 0.995 per step).
+        const waterDamping = Math.pow(0.995, 2); // 2 steps per frame
+        velocity = velocity.multiply(waterDamping);
         center = center.add(velocity.multiply(seconds));
 
         // Floor collision
