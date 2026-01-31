@@ -316,17 +316,22 @@ async function init(): Promise<void> {
   const gui = new GUI({ title: 'Settings' });
   gui.close(); // Collapse by default
 
+  type RenderMode = 'duck' | 'sphere';
+  const renderOptions: Record<string, RenderMode> = {
+    'Rubber Duck': 'duck',
+    Sphere: 'sphere',
+  };
   const settings = {
     gravity: useSpherePhysics,
     followCamera: false,
-    showSphere: false,
+    renderMode: 'duck' as RenderMode,
   };
 
   gui
-    .add(settings, 'showSphere')
-    .name('Render Sphere')
-    .onChange((v: boolean) => {
-      updateShadowFlags(v);
+    .add(settings, 'renderMode', renderOptions)
+    .name('Render Object')
+    .onChange((mode: RenderMode) => {
+      updateShadowFlags(mode === 'sphere');
       (document.activeElement as HTMLElement)?.blur();
     });
   const gravityController = gui
@@ -343,7 +348,7 @@ async function init(): Promise<void> {
       (document.activeElement as HTMLElement)?.blur();
     });
 
-  updateShadowFlags(settings.showSphere);
+  updateShadowFlags(settings.renderMode === 'sphere');
 
   // Initialize sphere position
   sphere.update(center.toArray(), radius);
@@ -666,7 +671,7 @@ async function init(): Promise<void> {
         sphere.update(center.toArray(), radius);
       }
 
-      if (settings.showSphere) {
+      if (settings.renderMode === 'sphere') {
         // Update water displacement from sphere movement
         water.moveSphere(oldCenter.toArray(), center.toArray(), radius);
       }
@@ -678,14 +683,20 @@ async function init(): Promise<void> {
       water.updateNormals();
 
       // Update model shadow before caustics (shadow texture is sampled by caustics)
-      model.update(center.toArray(), duckScale);
-      model.renderShadow();
+      if (settings.renderMode === 'duck') {
+        model.update(center.toArray(), duckScale);
+        model.renderShadow();
+      } else {
+        model.clearShadow();
+      }
       water.updateCaustics();
     }
 
     // Update camera uniforms
     updateUniforms();
-    model.update(center.toArray(), duckScale);
+    if (settings.renderMode === 'duck') {
+      model.update(center.toArray(), duckScale);
+    }
 
     // --- GPU Render Pass ---
 
@@ -708,9 +719,11 @@ async function init(): Promise<void> {
         depthStoreOp: 'store',
       },
     });
-    model.render(refractionPass, water.textureA, water.sampler, water.causticsTexture, {
-      commonUniforms: uniformBuffer,
-    });
+    if (settings.renderMode === 'duck') {
+      model.render(refractionPass, water.textureA, water.sampler, water.causticsTexture, {
+        commonUniforms: uniformBuffer,
+      });
+    }
     refractionPass.end();
 
     // Render planar reflection (duck only) to offscreen texture
@@ -730,10 +743,12 @@ async function init(): Promise<void> {
         depthStoreOp: 'store',
       },
     });
-    model.render(reflectionPass, water.textureA, water.sampler, water.causticsTexture, {
-      commonUniforms: reflectionCommonUniformBuffer,
-      useReflectionPipeline: true,
-    });
+    if (settings.renderMode === 'duck') {
+      model.render(reflectionPass, water.textureA, water.sampler, water.causticsTexture, {
+        commonUniforms: reflectionCommonUniformBuffer,
+        useReflectionPipeline: true,
+      });
+    }
     reflectionPass.end();
 
     const passEncoder = commandEncoder.beginRenderPass({
@@ -755,10 +770,12 @@ async function init(): Promise<void> {
 
     // Render scene objects
     pool.render(passEncoder, water.textureA, water.sampler, water.causticsTexture);
-    if (settings.showSphere) {
+    if (settings.renderMode === 'sphere') {
       sphere.render(passEncoder, water.textureA, water.sampler, water.causticsTexture);
     }
-    model.render(passEncoder, water.textureA, water.sampler, water.causticsTexture);
+    if (settings.renderMode === 'duck') {
+      model.render(passEncoder, water.textureA, water.sampler, water.causticsTexture);
+    }
     water.renderSurface(passEncoder);
 
     passEncoder.end();

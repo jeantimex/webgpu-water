@@ -214,6 +214,22 @@ export class Model {
     this.device.queue.submit([encoder.finish()]);
   }
 
+  clearShadow(): void {
+    const encoder = this.device.createCommandEncoder();
+    const pass = encoder.beginRenderPass({
+      colorAttachments: [
+        {
+          view: this.shadowTexture.createView(),
+          clearValue: { r: 0, g: 0, b: 0, a: 0 },
+          loadOp: 'clear',
+          storeOp: 'store',
+        },
+      ],
+    });
+    pass.end();
+    this.device.queue.submit([encoder.finish()]);
+  }
+
   private createPipeline(): void {
     const vertexShaderModule = this.device.createShaderModule({
       label: 'Model Vertex Shader',
