@@ -10,6 +10,9 @@ Released under the MIT license
 <html>
   <head>
     <title>WebGPU Water</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="preload" href="https://fonts.gstatic.com/s/materialicons/v142/flUhRq6tzZclQEJ-Vdg-IuiaDsNc.woff2" as="font" type="font/woff2" crossorigin />
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet" />
     <meta name="viewport" content="initial-scale=1.0, user-scalable=no" />
     <style type="text/css">
@@ -61,11 +64,29 @@ Released under the MIT license
       }
       #loading {
         position: absolute;
-        left: 0;
         top: 50%;
-        right: 300px;
-        text-align: center;
-        margin-top: -8px;
+        left: 50%;
+        transform: translate(-50%, -50%);
+      }
+      #loading .spinner {
+        width: 48px;
+        height: 48px;
+        border: 4px solid rgba(255, 255, 255, 0.2);
+        border-top-color: white;
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+      }
+      @keyframes spin {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+      body.loading #help,
+      body.loading #help-toggle {
+        display: none;
+      }
+      #help-toggle.font-loading {
+        visibility: hidden;
       }
       #help-toggle {
         display: none;
@@ -137,9 +158,9 @@ Released under the MIT license
         }
       }
     </style>
-    <script type="module" crossorigin src="/webgpu-water/assets/index-Ckih87bn.js"></script>
+    <script type="module" crossorigin src="/webgpu-water/assets/index-BsZnFo6c.js"></script>
   </head>
-  <body>
+  <body class="loading">
     <div id="help" class="collapsed">
       <h1>WebGPU Water</h1>
       <p>
@@ -218,8 +239,13 @@ Released under the MIT license
         <small>Last updated: February 10 2026</small>
       </p>
     </div>
-    <div id="help-toggle" class="material-icons">menu</div>
-    <div id="loading">Loading...</div>
+    <div id="help-toggle" class="material-icons font-loading">menu</div>
+    <script>
+      document.fonts.load('24px Material Icons').then(function() {
+        document.getElementById('help-toggle').classList.remove('font-loading');
+      });
+    </script>
+    <div id="loading"><div class="spinner"></div></div>
     <img id="tiles" src="tiles.jpg" />
     <img id="xneg" src="xneg.jpg" />
     <img id="xpos" src="xpos.jpg" />
